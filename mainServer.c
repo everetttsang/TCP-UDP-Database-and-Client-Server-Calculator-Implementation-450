@@ -19,8 +19,10 @@
 #define MYPORT "22236"
 #define DBPORT "23236"	// the port users will be connecting to
 #define CALCPORT "24236"
+#define MONPORT "25236"
 #define MAXBUFLEN 100
 #define BACKLOG 10
+#define MONBUFLEN 100
 
 void sigchld_handler(int s)
 {
@@ -96,7 +98,7 @@ int main(int argc, char *argv[])
 {
 //	talk(argc, argv);
 	//for (int i=0; i<30000; i++);
-	int sockfd, new_fd, udp_fd;
+	int sockfd, new_fd, udp_fd, mon_fd, mon2_fd;
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 	int numbytes;
@@ -115,7 +117,9 @@ int main(int argc, char *argv[])
 	char inputFileSize[100];
 	char client[10];
 	char name[10];
-	char toClient[500];
+	// char toClient[500];
+	char monBuf[100];
+
 	// strcpy(name, argv[1]);
 	int yes=1;
 	struct sigaction sa;
@@ -166,26 +170,77 @@ int main(int argc, char *argv[])
 	}
 	printf("The server is up and running.\n");
 
+//create monitor socket
+memset(&hints, 0, sizeof hints);
+hints.ai_family = AF_UNSPEC;
+hints.ai_socktype = SOCK_STREAM;
+hints.ai_flags = AI_PASSIVE; // use my IP
+if ((rv = getaddrinfo(NULL, MONPORT, &hints, &servinfo)) != 0) {
+	fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+	return 1;
+}
+// loop through all the results and bind to the first we can
+for(p = servinfo; p != NULL; p = p->ai_next) {
+	if ((mon_fd = socket(p->ai_family, p->ai_socktype,
+		p->ai_protocol)) == -1) {
+			perror("server: socket");
+			continue;
+		}
+		if (setsockopt(mon_fd, SOL_SOCKET, SO_REUSEADDR, &yes,
+			sizeof(int)) == -1) {
+				perror("setsockopt");
+				exit(1);
+			}
+			if (bind(mon_fd, p->ai_addr, p->ai_addrlen) == -1) {
+				close(sockfd);
+				perror("server: bind");
+				continue;
+			}
+			break;
+}
+freeaddrinfo(servinfo); // all done with this structure
+if (p == NULL) {
+	fprintf(stderr, "server: failed to bind\n");
+	exit(1);
+}
+if (listen(mon_fd, BACKLOG) == -1) {
+	perror("listen");
+	exit(1);
+}
+sa.sa_handler = sigchld_handler; // reap all dead processes
+sigemptyset(&sa.sa_mask);
+sa.sa_flags = SA_RESTART;
+if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+	perror("sigaction");
+	exit(1);
+}
+
+
+
 
 	while(1) { // main accept() loop
-		char toClient[50];
-		strcpy (toClient, "");
 		int sendUDP= 0;
 		int matchFound=0;
 
-		//printf("Waiting...\n");
 		sin_size = sizeof their_addr;
 		new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+		mon2_fd = accept(mon_fd, (struct sockaddr *)&their_addr, &sin_size);
+		printf("Waiting...\n");
+
+		strcpy(buf, "");
+		printf("How about here? %s\n", buf);
+
+
 
 		if ((numbytes = recv (new_fd, buf, 10, 0))== -1){
 			perror ("recv");
 			exit(1);
 		}
 		else{
-			// printf("Received inputID\n");
+			printf("Received inputID\n");
 			buf[numbytes] = '\0';
 			strcpy(inputID, buf);
-			// printf("Input ID: %s\n", inputID);
+			printf("Input ID: %s\n", inputID);
 		}
 
 		if ((numbytes = recv (new_fd, buf, 10, 0))== -1){
@@ -193,13 +248,23 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		else{
-			// printf("Received input file size\n");
+			printf("Received input file size\n");
 			buf[numbytes] ='\0';
 			strcpy(inputFileSize, buf);
-			// printf("Input File Size: %s\n", inputFileSize);
+			printf("Input File Size: %s\n", inputFileSize);
 		}
 
 		printf("Receive link %s, file size %sMB.\n", inputID, inputFileSize);
+		strcpy(monBuf,"");
+		strcat(monBuf, "Main server received Link ");
+		strcat(monBuf, inputID);
+		strcat(monBuf, ", file size ");
+		strcat(monBuf, inputFileSize);
+		strcat(monBuf, "MB.\n");
+		printf("%s\n", monBuf);
+		// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+		// perror("send");
+
 		// printf("Server: received '%s'\n",buf);
 
 		//printf("Received greeting from '%s'\n",client);
@@ -244,6 +309,14 @@ int main(int argc, char *argv[])
 		//printf("Link %s, file size %sMB.\n", inputID, inputFileSize);
 		printf("Send Link %s to database server.\n", inputID);
 		talk(argc, argv, inputID, DBPORT);
+		strcpy(monBuf,"");
+		strcat(monBuf, "Main server sends Link ");
+		strcat(monBuf, inputID);
+		strcat(monBuf, " to database server.\n");
+		printf("%s\n", monBuf);
+		// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+		// perror("send");
+
 		sendUDP=1;
 		int storeCount=0;
 		int receiveCount=0;
@@ -292,7 +365,31 @@ int main(int argc, char *argv[])
 					case 1:
 						strcpy(propVel, buf);
 						printf("Receive link capacity %sMpbs, link length %skm, and propagation velocity %skm/s.\n", capacity, linkLength,propVel);
+						strcpy(monBuf,"");
+						strcat(monBuf, "Main server received information from database server:\n");
+						// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+						// perror("send");
 
+						strcpy(monBuf,"");
+						strcat(monBuf, "Link capacity: ");
+						strcat(monBuf, capacity);
+						strcat(monBuf, "Mbps,\n");
+						// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+						// perror("send");
+
+						strcpy(monBuf,"");
+						strcat(monBuf, "Link Length: ");
+						strcat(monBuf, linkLength);
+						strcat(monBuf, "km,\n");
+						// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+						// perror("send");
+
+						strcpy(monBuf,"");
+						strcat(monBuf, "and propagation velocity: ");
+						strcat(monBuf, capacity);
+						strcat(monBuf, "km/s.\n");
+						// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+						// perror("send");
 						//printf("PROPAGATIONVELOCITY %s\n", propVel);
 						storeCount--;
 						dataToSend=1;
@@ -318,6 +415,10 @@ int main(int argc, char *argv[])
 						strcpy(totDelay, buf);
 						//printf("TOTAL DELAY %s\n", totDelay);
 						printf("Receive transmission delay %sms, propagation delay %sms, total delay %sms.\n", transDelay, propDelay, totDelay);
+						strcpy(monBuf,"");
+						strcat(monBuf, "Main server receives information from calculation server.\n");
+						// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+						// perror("send");
 						matchFound=1;
 						receiveCount--;
 						stall=0;
@@ -348,6 +449,11 @@ int main(int argc, char *argv[])
 			talk(argc, argv, capacity, CALCPORT);
 			talk(argc, argv, linkLength, CALCPORT);
 			talk(argc, argv, propVel, CALCPORT);
+
+			strcpy(monBuf,"");
+			strcat(monBuf, "Main server sends information to calculation server.\n");
+			// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+			// perror("send");
 			dataToSend=0;
 		}
 
@@ -356,14 +462,7 @@ int main(int argc, char *argv[])
 
 
 		if(stall==0){
-			// strcat(toClient, "Receive transmission delay ");
-			// strcat(toClient, transDelay);
-			// strcat(toClient, "ms, propagation delay ");
-			// strcat(toClient, propDelay);
-			// strcat(toClient, "ms and total delay ");
-			// strcat(toClient, totDelay);
-			// strcat(toClient, "ms\n");
-			// printf("%s\n", toClient);
+
 		}
 	}
 	close(udp_fd);
@@ -384,24 +483,54 @@ int main(int argc, char *argv[])
 			if (send(new_fd, totDelay, 10 , 0) == -1)
 			perror("send");
 
+			strcpy(monBuf,"");
+			strcat(monBuf, "Main server sends information to client : \n");
+			// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+			// perror("send");
+
+			strcpy(monBuf,"");
+			strcat(monBuf, "transmission delay: ");
+			strcat(monBuf, transDelay);
+			strcat(monBuf, "ms,\n");
+			// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+			// perror("send");
+
+			strcpy(monBuf,"");
+			strcat(monBuf, "propgataion delay: ");
+			strcat(monBuf, propDelay);
+			strcat(monBuf, "ms,\n");
+			// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+			// perror("send");
+
+			strcpy(monBuf,"");
+			strcat(monBuf, "total delay: ");
+			strcat(monBuf, totDelay);
+			strcat(monBuf, "ms.\n");
+			// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+			// perror("send");
+			printf("so this happens\n");
 		}
 		else{
 			// printf("Sending no match found\n");
 			if (send(new_fd, "No match found.\n", 10 , 0) == -1)
 			perror("send");
-			// printf("Send greetings to '%s'\n", client);
-		}
 
-		// if ((numbytes = recvfrom(new_fd, buf, 10 , 0,
-		// 	(struct sockaddr *)&their_addr, &addr_len)) == -1) {
-		// 	perror("recvfrom");
-		// 	exit(1);
-		// }
-		// buf[numbytes] = '\0';
-		// printf("%s\n",buf);
+			strcpy(monBuf,"");
+			strcat(monBuf, "Main server receives information from database server: no match found.\n");
+			// if (send(mon2_fd, monBuf, MONBUFLEN , 0) == -1)
+			// perror("send");
+			// printf("Send greetings to '%s'\n", client);
+
+
+		}
+		printf("Do we ever get here?\n");
+		// if (send(mon2_fd, "f", 10 , 0) == -1)
+		// perror("send");
+
 
 	}
-
+	close(mon_fd);
+	close(mon2_fd);
 	close(sockfd);
 	close(udp_fd);
 	return 0;

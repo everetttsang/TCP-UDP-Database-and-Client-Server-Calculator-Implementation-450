@@ -1,5 +1,5 @@
 /*
-** client.c -- a stream socket client demo
+** client.c -- a stream socket client demo // modified to monitor
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,8 +11,9 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#define PORT "21236" // the port client will be connecting to
+#define PORT "25236" // the port client will be connecting to
 #define MAXDATASIZE 100 // max number of bytes we can get at once
+#define RECEIVESIZE 100
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -36,6 +37,7 @@ int main(int argc, char *argv[])
 
 
     while(1){
+      int end =1;
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
       hints.ai_socktype = SOCK_STREAM;
@@ -63,67 +65,20 @@ int main(int argc, char *argv[])
         }
         inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
         s, sizeof s);
-
-
-       printf("The client is up and running\n");
+       printf("The monitor is up and running\n");
         freeaddrinfo(servinfo); // all done with this structure
-      printf("Please input link ID:\n");
-      scanf("%s %s", inputID, inputFileSize);
-      //send data to dbServer
-      printf("Send Link %s and file size %sMB to the main server.\n", inputID, inputFileSize);
-      //printf("Send Link %s to database server.\n", inputID);
-
-      if (send (sockfd, inputID,10, 0)==-1)
-        perror("send");
-
-
-      if (send (sockfd, inputFileSize,10, 0)==-1)
-        perror("send");
-
 
       //printf("Client sent greetings to the server\n");
-      if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
-        perror("recv");
-      }
-      buf[numbytes] = '\0';
-    //  printf("Get reply from '%s'\n",buf);
-      if (strcmp(buf, "d\0")==0){
-        char tempTransDelay [10];
-        char tempPropDelay[10];
-        char tempTotDelay[10];
-
-        if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
+      while(end){
+        if ((numbytes = recv(sockfd, buf, RECEIVESIZE, 0)) == -1) {
           perror("recv");
         }
         buf[numbytes] = '\0';
-        strcpy(tempTransDelay, buf);
-        // printf("%s\n", tempTransDelay);
-
-        if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
-          perror("recv");
-        }
-        buf[numbytes] = '\0';
-        strcpy(tempPropDelay, buf);
-        // printf("%s\n", tempPropDelay);
-
-        if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
-          perror("recv");
-        }
-        buf[numbytes] = '\0';
-        strcpy(tempTotDelay, buf);
-        //printf("%s\n", tempTotDelay);
-        printf("Receive transmission delay %sms, propagation delay %sms and total delay %sms\n", tempTransDelay,tempPropDelay,tempTotDelay);
-      }
-      else{
-        printf("No match found.\n");
+        printf("%s\n",buf);
+        if (strcmp(buf, "f\0")==0)
+          end=0;
       }
 
-
-    // if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
-    //   perror("recv");
-    // }
-    // buf[numbytes] = '\0';
-    // printf("%s\n", buf);
     }
 
     close(sockfd);
