@@ -24,7 +24,7 @@ void *get_in_addr(struct sockaddr *sa)
 int main(int argc, char *argv[])
 {
   char name[10];
-  strcpy(name, argv[1]);
+  // strcpy(name, argv[1]);
   int sockfd, numbytes;
   char buf[MAXDATASIZE];
   struct addrinfo hints, *servinfo, *p;
@@ -63,13 +63,13 @@ int main(int argc, char *argv[])
         }
         inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
         s, sizeof s);
-        printf("The client is up and running\n");
+       printf("The client is up and running\n");
         freeaddrinfo(servinfo); // all done with this structure
       printf("Please input link ID:\n");
       scanf("%s %s", inputID, inputFileSize);
       //send data to dbServer
-      printf("Link %s, file size %sMB.\n", inputID, inputFileSize);
-      printf("Send Link %s to database server.\n", inputID);
+      printf("Send Link %s and file size %sMB to the main server.\n", inputID, inputFileSize);
+      //printf("Send Link %s to database server.\n", inputID);
 
       if (send (sockfd, inputID,10, 0)==-1)
         perror("send");
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
         perror("send");
 
 
-      printf("Client sent greetings to the server\n");
+      //printf("Client sent greetings to the server\n");
       if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
         perror("recv");
       }
@@ -95,29 +95,29 @@ int main(int argc, char *argv[])
         }
         buf[numbytes] = '\0';
         strcpy(tempTransDelay, buf);
-        printf("%s\n", tempTransDelay);
+        // printf("%s\n", tempTransDelay);
 
         if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
           perror("recv");
         }
         buf[numbytes] = '\0';
         strcpy(tempPropDelay, buf);
-        printf("%s\n", tempPropDelay);
+        // printf("%s\n", tempPropDelay);
 
         if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
           perror("recv");
         }
         buf[numbytes] = '\0';
         strcpy(tempTotDelay, buf);
-        printf("%s\n", tempTotDelay);
+        //printf("%s\n", tempTotDelay);
         printf("Receive transmission delay %sms, propagation delay %sms and total delay %sms\n", tempTransDelay,tempPropDelay,tempTotDelay);
       }
       else{
         printf("No match found.\n");
       }
 
-      if (send (sockfd, "thanks\0",10, 0)==-1)
-        perror("send");
+    //   if (send (sockfd, "thanks\0",10, 0)==-1)
+    //     perror("send");
     }
 
     close(sockfd);

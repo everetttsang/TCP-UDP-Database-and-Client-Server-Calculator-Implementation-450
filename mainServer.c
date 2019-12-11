@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	char client[10];
 	char name[10];
 	char toClient[500];
-	strcpy(name, argv[1]);
+	// strcpy(name, argv[1]);
 	int yes=1;
 	struct sigaction sa;
 	socklen_t sin_size;
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 		perror("sigaction");
 		exit(1);
 	}
-	printf("server: waiting for connections...\n");
+	printf("The server is up and running.\n");
 
 
 	while(1) { // main accept() loop
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
 		int sendUDP= 0;
 		int matchFound=0;
 
-		printf("Waiting...\n");
+		//printf("Waiting...\n");
 		sin_size = sizeof their_addr;
 		new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 
@@ -182,10 +182,10 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		else{
-			printf("Received inputID\n");
+			// printf("Received inputID\n");
 			buf[numbytes] = '\0';
 			strcpy(inputID, buf);
-			printf("Input ID: %s\n", inputID);
+			// printf("Input ID: %s\n", inputID);
 		}
 
 		if ((numbytes = recv (new_fd, buf, 10, 0))== -1){
@@ -193,13 +193,13 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		else{
-			printf("Received input file size\n");
+			// printf("Received input file size\n");
 			buf[numbytes] ='\0';
 			strcpy(inputFileSize, buf);
-			printf("Input File Size: %s\n", inputFileSize);
+			// printf("Input File Size: %s\n", inputFileSize);
 		}
 
-
+		printf("Receive link %s, file size %sMB.\n", inputID, inputFileSize);
 		// printf("Server: received '%s'\n",buf);
 
 		//printf("Received greeting from '%s'\n",client);
@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 		// printf("Please input link ID:\n");
 		// scanf("%s %s", inputID, inputFileSize);
 		// //send data to dbServer
-		printf("Link %s, file size %sMB.\n", inputID, inputFileSize);
+		//printf("Link %s, file size %sMB.\n", inputID, inputFileSize);
 		printf("Send Link %s to database server.\n", inputID);
 		talk(argc, argv, inputID, DBPORT);
 		sendUDP=1;
@@ -371,7 +371,7 @@ int main(int argc, char *argv[])
 		//return information
 		//printf("Name: %s\n", name);
 		if (matchFound){
-			printf("Sending found information to client\n");
+			// printf("Sending found information to client\n");
 			if (send(new_fd, "d", 10 , 0) == -1)
 			perror("send");
 			for (int i=0;i < 30000; i++);
@@ -386,19 +386,19 @@ int main(int argc, char *argv[])
 
 		}
 		else{
-			printf("Sending no match found\n");
+			// printf("Sending no match found\n");
 			if (send(new_fd, "No match found.\n", 10 , 0) == -1)
 			perror("send");
-			printf("Send greetings to '%s'\n", client);
+			// printf("Send greetings to '%s'\n", client);
 		}
 
-		if ((numbytes = recvfrom(new_fd, buf, 10 , 0,
-			(struct sockaddr *)&their_addr, &addr_len)) == -1) {
-			perror("recvfrom");
-			exit(1);
-		}
-		buf[numbytes] = '\0';
-		printf("%s\n",buf);
+		// if ((numbytes = recvfrom(new_fd, buf, 10 , 0,
+		// 	(struct sockaddr *)&their_addr, &addr_len)) == -1) {
+		// 	perror("recvfrom");
+		// 	exit(1);
+		// }
+		// buf[numbytes] = '\0';
+		// printf("%s\n",buf);
 
 	}
 
