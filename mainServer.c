@@ -166,67 +166,43 @@ int main(int argc, char *argv[])
 	}
 	printf("server: waiting for connections...\n");
 
-	//now establish the UDP sock
-	// if ((rv = getaddrinfo(NULL, MYPORT, &hints, &servinfo)) != 0) {
-	// 	fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-	// 	return 1;
-	// }
-	//
-	// // loop through all the results and bind to the first we can
-	// for(p = servinfo; p != NULL; p = p->ai_next) {
-	// 	if ((udp_fd = socket(p->ai_family, p->ai_socktype,
-	// 			p->ai_protocol)) == -1) {
-	// 		perror("listener: socket");
-	// 		continue;
-	// 	}
-	//
-	// 	if (bind(udp_fd, p->ai_addr, p->ai_addrlen) == -1) {
-	// 		close(udp_fd);
-	// 		perror("listener: bind");
-	// 		continue;
-	// 	}
-	//
-	// 	break;
-	// }
-	//
-	// if (p == NULL) {
-	// 	fprintf(stderr, "listener: failed to bind socket\n");
-	// 	return 2;
-	// }
-	//
-	// freeaddrinfo(servinfo);
 
 	while(1) { // main accept() loop
 		char toClient[50];
 		strcpy (toClient, "");
 		int sendUDP= 0;
 		int matchFound=0;
+
+		printf("Waiting...\n");
 		sin_size = sizeof their_addr;
 		new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 
-		if ((numbytes = recv (new_fd, buf, MAXBUFLEN-1, 0))== -1){
+		if ((numbytes = recv (new_fd, buf, 10, 0))== -1){
 			perror ("recv");
-			// exit(1);
+			exit(1);
 		}
 		else{
+			printf("Received inputID\n");
+			buf[numbytes] = '\0';
 			strcpy(inputID, buf);
 			printf("Input ID: %s\n", inputID);
 		}
 
-		if ((numbytes = recv (new_fd, buf, MAXBUFLEN-1, 0))== -1){
+		if ((numbytes = recv (new_fd, buf, 10, 0))== -1){
 			perror ("recv");
-			// exit(1);
+			exit(1);
 		}
 		else{
+			printf("Received input file size\n");
+			buf[numbytes] ='\0';
 			strcpy(inputFileSize, buf);
 			printf("Input File Size: %s\n", inputFileSize);
 		}
 
-		printf("The server is up and running\n");
-		buf[numbytes] = '\0';
+
 		// printf("Server: received '%s'\n",buf);
 
-		printf("Received greeting from '%s'\n",client);
+		//printf("Received greeting from '%s'\n",client);
 
 		memset(&hints, 0, sizeof hints);
 		hints.ai_family = AF_UNSPEC; // set to AF_INET to force IPv4
@@ -261,7 +237,7 @@ int main(int argc, char *argv[])
 		}
 
 		freeaddrinfo(servinfo);
-		printf("The Server is up and running.\n");
+		//printf("The Server is up and running.\n");
 		// printf("Please input link ID:\n");
 		// scanf("%s %s", inputID, inputFileSize);
 		// //send data to dbServer
@@ -393,8 +369,9 @@ int main(int argc, char *argv[])
 	close(udp_fd);
 
 		//return information
-		printf("Name: %s\n", name);
+		//printf("Name: %s\n", name);
 		if (matchFound){
+			printf("Sending found information to client\n");
 			if (send(new_fd, "d", 10 , 0) == -1)
 			perror("send");
 			for (int i=0;i < 30000; i++);
@@ -409,17 +386,24 @@ int main(int argc, char *argv[])
 
 		}
 		else{
+			printf("Sending no match found\n");
 			if (send(new_fd, "No match found.\n", 10 , 0) == -1)
 			perror("send");
 			printf("Send greetings to '%s'\n", client);
 		}
 
-
-
+		if ((numbytes = recvfrom(new_fd, buf, 10 , 0,
+			(struct sockaddr *)&their_addr, &addr_len)) == -1) {
+			perror("recvfrom");
+			exit(1);
+		}
+		buf[numbytes] = '\0';
+		printf("%s\n",buf);
 
 	}
 
 	close(sockfd);
+	close(udp_fd);
 	return 0;
 
 }

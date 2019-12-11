@@ -174,7 +174,7 @@ int main(int argc,char *argv[])
 		ssize_t line_size;
 
 		FILE *dbFile;
-		dbFile = fopen("database.txt", "r");
+		dbFile = fopen("database_final.txt", "r");
 		if(!dbFile){
 			return 1;
 		}

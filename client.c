@@ -33,37 +33,38 @@ int main(int argc, char *argv[])
   char inputID[100];
 	char inputFileSize[100];
 
-  memset(&hints, 0, sizeof hints);
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  if ((rv = getaddrinfo("127.0.0.1", PORT, &hints, &servinfo)) != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-    return 1;
-  }
-  // loop through all the results and connect to the first we can
-  for(p = servinfo; p != NULL; p = p->ai_next) {
-    if ((sockfd = socket(p->ai_family, p->ai_socktype,
-      p->ai_protocol)) == -1) {
-        perror("client: socket");
-        continue;
-      }
-      if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-        close(sockfd);
-        perror("client: connect");
-        continue;
-      }
-      break;
-    }
-    if (p == NULL) {
-      fprintf(stderr, "client: failed to connect\n");
-      return 2;
-    }
-    inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-    s, sizeof s);
-    printf("The client is up and running\n");
-    freeaddrinfo(servinfo); // all done with this structure
+
 
     while(1){
+      memset(&hints, 0, sizeof hints);
+      hints.ai_family = AF_UNSPEC;
+      hints.ai_socktype = SOCK_STREAM;
+      if ((rv = getaddrinfo("127.0.0.1", PORT, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+      }
+      // loop through all the results and connect to the first we can
+      for(p = servinfo; p != NULL; p = p->ai_next) {
+        if ((sockfd = socket(p->ai_family, p->ai_socktype,
+          p->ai_protocol)) == -1) {
+            perror("client: socket");
+            continue;
+          }
+          if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
+            perror("client: connect");
+            continue;
+          }
+          break;
+        }
+        if (p == NULL) {
+          fprintf(stderr, "client: failed to connect\n");
+          return 2;
+        }
+        inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+        s, sizeof s);
+        printf("The client is up and running\n");
+        freeaddrinfo(servinfo); // all done with this structure
       printf("Please input link ID:\n");
       scanf("%s %s", inputID, inputFileSize);
       //send data to dbServer
@@ -79,7 +80,7 @@ int main(int argc, char *argv[])
 
 
       printf("Client sent greetings to the server\n");
-      if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+      if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
         perror("recv");
       }
       buf[numbytes] = '\0';
@@ -115,6 +116,8 @@ int main(int argc, char *argv[])
         printf("No match found.\n");
       }
 
+      if (send (sockfd, "thanks\0",10, 0)==-1)
+        perror("send");
     }
 
     close(sockfd);
