@@ -30,6 +30,8 @@ int main(int argc, char *argv[])
   struct addrinfo hints, *servinfo, *p;
   int rv;
   char s[INET6_ADDRSTRLEN];
+  char inputID[100];
+	char inputFileSize[100];
 
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;
@@ -61,18 +63,59 @@ int main(int argc, char *argv[])
     printf("The client is up and running\n");
     freeaddrinfo(servinfo); // all done with this structure
 
+    while(1){
+      printf("Please input link ID:\n");
+      scanf("%s %s", inputID, inputFileSize);
+      //send data to dbServer
+      printf("Link %s, file size %sMB.\n", inputID, inputFileSize);
+      printf("Send Link %s to database server.\n", inputID);
 
-      if (send (sockfd, name,10, 0)==-1)
-      perror("send");
+      if (send (sockfd, inputID,10, 0)==-1)
+        perror("send");
+
+
+      if (send (sockfd, inputFileSize,10, 0)==-1)
+        perror("send");
+
 
       printf("Client sent greetings to the server\n");
+      if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+        perror("recv");
+      }
+      buf[numbytes] = '\0';
+    //  printf("Get reply from '%s'\n",buf);
+      if (strcmp(buf, "d\0")==0){
+        char tempTransDelay [10];
+        char tempPropDelay[10];
+        char tempTotDelay[10];
 
-    if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-      perror("recv");
+        if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
+          perror("recv");
+        }
+        buf[numbytes] = '\0';
+        strcpy(tempTransDelay, buf);
+        printf("%s\n", tempTransDelay);
+
+        if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
+          perror("recv");
+        }
+        buf[numbytes] = '\0';
+        strcpy(tempPropDelay, buf);
+        printf("%s\n", tempPropDelay);
+
+        if ((numbytes = recv(sockfd, buf, 10, 0)) == -1) {
+          perror("recv");
+        }
+        buf[numbytes] = '\0';
+        strcpy(tempTotDelay, buf);
+        printf("%s\n", tempTotDelay);
+        printf("Receive transmission delay %sms, propagation delay %sms and total delay %sms\n", tempTransDelay,tempPropDelay,tempTotDelay);
+      }
+      else{
+        printf("No match found.\n");
+      }
 
     }
-    buf[numbytes] = '\0';
-    printf("Get reply from '%s'\n",buf);
 
     close(sockfd);
     return 0;
